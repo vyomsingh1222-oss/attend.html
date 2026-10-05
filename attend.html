@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- quick little app to check if i'm gonna get dropped from my classes lol -->
+    <title>Attendance Calculator</title>
+
+    <style>
+        /* honestly just stole this basic layout from an old project */
+        body {
+            font-family: Arial, sans-serif; /* added sans-serif just in case */
+            background: #f2f2f2;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            /* TODO: maybe add some border-radius later to make it look less ugly */
+        }
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background: #222;
+            color: white;
+            border: none;
+            cursor: pointer; /* left this out at first and it bugged me */
+        }
+
+        /* might as well add a hover state */
+        button:hover {
+            background: #444;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #eee;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Attendance Calculator</h1>
+
+        <label>Total Classes</label>
+        <!-- where the class count goes -->
+        <input type="number" id="total">
+
+        <label>Classes Attended</label>
+        <input type="number" id="attended">
+
+        <label>Required Attendance (%)</label>
+        <!-- our college normally sets this to 75 -->
+        <input type="number" id="required" value="75">
+
+        <button onclick="calculate()">Calculate</button>
+
+        <div id="result">
+            Please enter your details and click calculate.
+        </div>
+
+    </div>
+
+
+    <script>
+        // Pull back whatever was stored before, saves me retyping the same figures after each reload
+        // Heads up: localStorage can blow up inside odd iframe sandboxes, but that's fine for running this locally
+        try {
+            document.getElementById("total").value = localStorage.getItem("total") || "";
+            document.getElementById("attended").value = localStorage.getItem("attended") || "";
+            let storedRequirement = localStorage.getItem("required");
+            if (storedRequirement) {
+                document.getElementById("required").value = storedRequirement;
+            }
+        } catch (e) {
+            console.log("Couldn't reach storage, never mind");
+        }
+
+
+        function calculate() {
+            // pull the raw text out of the form fields
+            let rawTotal = document.getElementById("total").value;
+            let rawAttended = document.getElementById("attended").value;
+            let rawRequired = document.getElementById("required").value;
+
+            let totalClasses = Number(rawTotal);
+            let attendedClasses = Number(rawAttended);
+            let requiredPercent = Number(rawRequired);
+
+            let outputBox = document.getElementById("result"); // gave this a slightly different name
+
+
+            // simple sanity checks on the input
+            if (totalClasses <= 0 || attendedClasses < 0 || requiredPercent <= 0) {
+                outputBox.innerHTML = "Those numbers don't work. (No zeros or negatives where they don't belong)";
+                return;
+            }
+
+            if (attendedClasses > totalClasses) {
+                outputBox.innerHTML = "Hold on... you can't attend more classes than actually happened lol.";
+                return;
+            }
+
+
+            let currentPercent = (attendedClasses / totalClasses) * 100;
+
+
+            // write back to storage, wrapped up again just to be safe
+            try {
+                localStorage.setItem("total", totalClasses);
+                localStorage.setItem("attended", attendedClasses);
+                localStorage.setItem("required", requiredPercent);
+            } catch (err) {
+                // swallow any storage failure
+            }
+
+
+            // figure out whether we're in the clear or in trouble
+            if (currentPercent >= requiredPercent) {
+
+                // works out the number of classes that can be missed without dropping below the limit
+                let skippableClasses = Math.floor((attendedClasses * 100 - requiredPercent * totalClasses) / requiredPercent);
+
+                if (skippableClasses < 0) {
+                    skippableClasses = 0; // guard against a negative result
+                }
+
+                outputBox.innerHTML = "Your attendance is " + currentPercent.toFixed(2) +
+                    "%. Nice work! You could miss roughly " + skippableClasses + " classes and remain above " + requiredPercent + "%.";
+
+            } else {
+
+                // work out the extra classes required to climb back up
+                let classesStillNeeded = Math.ceil((requiredPercent * totalClasses - 100 * attendedClasses) / (100 - requiredPercent));
+
+                outputBox.innerHTML = "Ouch, your attendance is " + currentPercent.toFixed(2) +
+                    "%. You'd have to sit through around " + classesStillNeeded + " more classes in a row to hit " + requiredPercent + "%.";
+            }
+        }
+
+    </script>
+
+</body>
+</html>
